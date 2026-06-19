@@ -1,5 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 
+import { getRuntimeApiToken } from './runtimeEnv'
+
 const backendBaseUrl = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:8000'
 const baseURL = import.meta.env.VITE_API_BASE_URL ?? `${backendBaseUrl}/api`
 
@@ -10,7 +12,11 @@ const http: AxiosInstance = axios.create({
 
 http.interceptors.request.use(
   (config) => {
-    // 这里可以注入 token 等信息
+    // 若配置了访问令牌（后端 API_AUTH_TOKEN），附加 Bearer 鉴权头；未配置时不影响请求。
+    const token = getRuntimeApiToken()
+    if (token) {
+      config.headers.set('Authorization', `Bearer ${token}`)
+    }
     return config
   },
   (error) => Promise.reject(error),
