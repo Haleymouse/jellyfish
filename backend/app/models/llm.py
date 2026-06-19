@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy import JSON, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.crypto import EncryptedString
 from app.core.db import Base
 from app.models.base import TimestampMixin
 
@@ -75,8 +76,12 @@ class Provider(Base, TimestampMixin):
         default=None,
         comment="视频能力 API Base URL（可选覆盖）",
     )
-    api_key: Mapped[str] = mapped_column(String(4096), nullable=False, default="", comment="API Key（敏感）")
-    api_secret: Mapped[str] = mapped_column(String(4096), nullable=False, default="", comment="API Secret（敏感）")
+    api_key: Mapped[str] = mapped_column(
+        EncryptedString(4096), nullable=False, default="", comment="API Key（敏感，静态加密存储）"
+    )
+    api_secret: Mapped[str] = mapped_column(
+        EncryptedString(4096), nullable=False, default="", comment="API Secret（敏感，静态加密存储）"
+    )
     description: Mapped[str] = mapped_column(Text, nullable=False, default="", comment="说明")
     status: Mapped[ProviderStatus] = mapped_column(
         String(32),

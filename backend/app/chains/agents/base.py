@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+import logging
 import re
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar, cast
@@ -12,6 +13,8 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import Runnable, RunnableLambda
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 STRUCTURED_OUTPUT_METHOD = "function_calling"
 
@@ -142,8 +145,10 @@ class AgentBase(ABC, Generic[T]):
         structured_output_method: str = STRUCTURED_OUTPUT_METHOD,
         agent_kwargs: dict[str, Any] | None = None,
     ) -> None:
+        # 说明：是否启用 thinking 由构建 LLM 时（runtime 层）通过 extra_body 决定，
+        # 这里不再对 self._model 做 bind —— Runnable.bind 返回新对象、不会原地生效，
+        # 之前丢弃返回值的写法是无效代码，已移除以避免误导。
         self._model = model
-        self._model.bind(extra_body={"enable_thinking": self.enable_thinking})
         self._structured_output_method = structured_output_method
         self._agent_kwargs = dict(agent_kwargs or {})
         self._structured_chain: Runnable | None = None
@@ -323,7 +328,13 @@ class AgentBase(ABC, Generic[T]):
                     data = self._normalize(result)
                     return self.output_model.model_validate(data)
             except Exception:
-                pass
+                # 结构化输出链失败时退回到"原始输出 + 手动解析"，
+                # 但需记录异常，避免静默吞掉鉴权失败/限流等真实错误。
+                logger.warning(
+                    "Structured output chain failed for %s; falling back to raw parse.",
+                    self.__class__.__name__,
+                    exc_info=True,
+                )
         return self.format_output(self.run(**kwargs))
 
     async def aextract(self, **kwargs: Any) -> T:
@@ -339,5 +350,9 @@ class AgentBase(ABC, Generic[T]):
                     data = self._normalize(result)
                     return self.output_model.model_validate(data)
             except Exception:
-                pass
+                logger.warning(
+                    "Structured output chain failed for %s; falling back to raw parse.",
+                    self.__class__.__name__,
+                    exc_info=True,
+                )
         return self.format_output(await self.arun(**kwargs))

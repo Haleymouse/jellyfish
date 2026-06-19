@@ -42,6 +42,25 @@ class _FakeShotSubresourceDB:
         self._line_id = 1
         self._frame_id = 1
 
+    async def execute(self, statement):  # noqa: ANN001
+        """最小 execute 替身：对白候选回退查询无数据时返回空结果。
+
+        删除已接受对白会触发候选回退查询（mark_pending_by_linked_dialog_line），
+        本测试不构造候选数据，返回空结果即可让删除流程顺利完成。
+        """
+
+        class _EmptyResult:
+            def scalars(self):
+                return self
+
+            def first(self):
+                return None
+
+            def all(self):
+                return []
+
+        return _EmptyResult()
+
     async def get(self, model: type, entity_id):  # noqa: ANN001
         if model is Project:
             return self.projects.get(entity_id)
