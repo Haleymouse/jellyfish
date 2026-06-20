@@ -121,3 +121,14 @@ async def health():
     """健康检查。"""
     from app.schemas.common import success_response
     return success_response({"status": "ok"})
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus 指标抓取端点（不在 /api/v1 前缀下，鉴权中间件默认放行）。"""
+    from prometheus_client import CONTENT_TYPE_LATEST
+    from starlette.responses import Response
+
+    from app.core.metrics import render_latest
+
+    return Response(content=render_latest(), media_type=CONTENT_TYPE_LATEST)
