@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 from app.core.db import Base
+from app.core.db_pool import engine_pool_kwargs
 
 
 def _to_sync_database_url(url: str) -> str:
@@ -22,11 +23,12 @@ def _to_sync_database_url(url: str) -> str:
 
 
 def _build_sync_engine() -> Engine:
+    sync_url = _to_sync_database_url(settings.database_url)
     return create_engine(
-        _to_sync_database_url(settings.database_url),
+        sync_url,
         echo=settings.debug,
         future=True,
-        pool_pre_ping=True,
+        **engine_pool_kwargs(sync_url),
     )
 
 

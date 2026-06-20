@@ -152,7 +152,8 @@ services:
         condition: service_completed_successfully
       mysql-init-sql:
         condition: service_completed_successfully
-    command: ["uv", "run", "celery", "-A", "app.core.celery_app:celery_app", "worker", "-l", "info"]
+    # -B 启用内嵌 beat 调度（单 worker 部署适用），用于运行任务表保留期清理等周期任务
+    command: ["uv", "run", "celery", "-A", "app.core.celery_app:celery_app", "worker", "-B", "-l", "info"]
 
   front:
     build:

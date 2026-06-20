@@ -100,6 +100,7 @@ import type {
   ShotVideoPromptPackRead,
 } from '../../../services/generated'
 import { listTaskLinksNormalized } from '../../../services/filmTaskLinks'
+import { pollTaskUntilDone } from '../../../services/taskPolling'
 import { buildFileDownloadUrl, resolveAssetUrl } from '../assets/utils'
 import type { Chapter } from '../../../mocks/data'
 import { executeTaskCancel } from '../components/taskActionHelpers'
@@ -4326,22 +4327,20 @@ function Inspector(props: {
     let cancelled = false
     void (async () => {
       try {
-        let finalTaskState: RelationTaskState | null = null
-        for (let i = 0; i < 60; i += 1) {
-          await sleep(2000)
-          if (cancelled) return
-          const statusRes = await FilmService.getTaskStatusApiV1FilmTasksTaskIdStatusGet({ taskId: videoTaskId })
-          const status = statusRes.data?.status ?? null
-          if (!status) continue
-          if (statusRes.data) {
-            finalTaskState = toRelationTaskStateFromStatusRead(statusRes.data)
-            setVideoTask(finalTaskState)
-          }
-          setVideoTaskStatus(status)
-          if (status === 'succeeded' || status === 'failed' || status === 'cancelled') break
-        }
+        const finalRes = await pollTaskUntilDone({
+          fetchStatus: () => FilmService.getTaskStatusApiV1FilmTasksTaskIdStatusGet({ taskId: videoTaskId }),
+          getStatus: (res) => res.data?.status ?? null,
+          isCancelled: () => cancelled,
+          maxDurationMs: 120000,
+          onUpdate: (res, status) => {
+            if (!status) return
+            if (res.data) setVideoTask(toRelationTaskStateFromStatusRead(res.data))
+            setVideoTaskStatus(status)
+          },
+        })
+        if (cancelled) return
+        const finalTaskState = finalRes?.data ? toRelationTaskStateFromStatusRead(finalRes.data) : null
         if (
-          !cancelled &&
           finalTaskState &&
           (finalTaskState.status === 'succeeded' ||
             finalTaskState.status === 'failed' ||
@@ -4485,19 +4484,17 @@ function Inspector(props: {
       setPromptSettledTask(null)
 
       let finalStatus = 'pending'
-      let finalTaskState: RelationTaskState | null = null
-      for (let i = 0; i < 30; i += 1) {
-        await sleep(2000)
-        const statusRes = await FilmService.getTaskStatusApiV1FilmTasksTaskIdStatusGet({ taskId })
-        const status = statusRes.data?.status
-        if (!status) continue
-        finalStatus = status
-        if (statusRes.data) {
-          finalTaskState = toRelationTaskStateFromStatusRead(statusRes.data)
-          setPromptTask(finalTaskState)
-        }
-        if (status === 'succeeded' || status === 'failed' || status === 'cancelled') break
-      }
+      const finalRes = await pollTaskUntilDone({
+        fetchStatus: () => FilmService.getTaskStatusApiV1FilmTasksTaskIdStatusGet({ taskId }),
+        getStatus: (res) => res.data?.status ?? null,
+        maxDurationMs: 60000,
+        onUpdate: (res, status) => {
+          if (!status) return
+          finalStatus = status
+          if (res.data) setPromptTask(toRelationTaskStateFromStatusRead(res.data))
+        },
+      })
+      const finalTaskState = finalRes?.data ? toRelationTaskStateFromStatusRead(finalRes.data) : null
       if (
         finalTaskState &&
         (finalTaskState.status === 'succeeded' ||
@@ -4633,20 +4630,18 @@ function Inspector(props: {
       setFrameImageSettledTask(null)
 
       let finalStatus = 'pending'
-      let finalTaskState: RelationTaskState | null = null
-      for (let i = 0; i < 30; i += 1) {
-        await sleep(2000)
-        const statusRes = await FilmService.getTaskStatusApiV1FilmTasksTaskIdStatusGet({ taskId })
-        const status = statusRes.data?.status
-        if (!status) continue
-        finalStatus = status
-        if (statusRes.data) {
-          finalTaskState = toRelationTaskStateFromStatusRead(statusRes.data)
-          setFrameImageTask(finalTaskState)
-        }
-        updateCardState(frameType, { taskStatus: status })
-        if (status === 'succeeded' || status === 'failed' || status === 'cancelled') break
-      }
+      const finalRes = await pollTaskUntilDone({
+        fetchStatus: () => FilmService.getTaskStatusApiV1FilmTasksTaskIdStatusGet({ taskId }),
+        getStatus: (res) => res.data?.status ?? null,
+        maxDurationMs: 60000,
+        onUpdate: (res, status) => {
+          if (!status) return
+          finalStatus = status
+          if (res.data) setFrameImageTask(toRelationTaskStateFromStatusRead(res.data))
+          updateCardState(frameType, { taskStatus: status })
+        },
+      })
+      const finalTaskState = finalRes?.data ? toRelationTaskStateFromStatusRead(finalRes.data) : null
       if (
         finalTaskState &&
         (finalTaskState.status === 'succeeded' ||

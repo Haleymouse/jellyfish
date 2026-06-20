@@ -40,12 +40,43 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./jellyfish.db"
 
+    # 连接池调优（仅对非 SQLite 后端生效，如 MySQL/PostgreSQL）：
+    # - pre_ping 在取用连接前做一次探活，规避 "MySQL server has gone away"；
+    # - recycle 回收过期连接，需小于数据库侧 wait_timeout；
+    # - size / max_overflow / timeout 控制并发与排队上限。
+    db_pool_pre_ping: bool = True
+    db_pool_recycle: int = 1800
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    db_pool_timeout: int = 30
+
     # Redis / Celery Broker
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_db: int = 0
     redis_password: str | None = None
     celery_broker_url: str | None = None
+
+    # Celery 健壮性与生成任务保护：
+    # - prefetch=1 + acks_late 适配长耗时生成任务，worker 崩溃可重投，避免吞任务；
+    # - max_tasks_per_child 周期性回收子进程，规避内存累积；
+    # - time_limit / soft_time_limit 为兜底超时（None 表示不额外限制，沿用任务自身超时）；
+    # - task_rate_limit 是对外部生成 API 的粗粒度全局节流（如 "60/m"），
+    #   留空表示不限制，避免批量提交瞬间打爆收费/限速的供应商接口。
+    celery_worker_prefetch_multiplier: int = 1
+    celery_task_acks_late: bool = True
+    celery_worker_max_tasks_per_child: int = 100
+    celery_task_time_limit: int | None = None
+    celery_task_soft_time_limit: int | None = None
+    celery_task_rate_limit: str | None = None
+
+    # 生成任务表保留期清理（Celery beat 调度）：
+    # - enabled 为 False 时不注册周期任务；
+    # - retention_days 为保留天数，仅清理超期的终态任务（保留已采用关联的任务）；
+    # - interval_seconds 为清理间隔（默认每天）。
+    task_cleanup_enabled: bool = True
+    task_cleanup_retention_days: int = 7
+    task_cleanup_interval_seconds: int = 86400
 
     # CORS：环境变量中建议使用逗号分隔（更贴近 docker-compose 用法）
     # 也兼容 JSON 数组：'["http://a","http://b"]'
