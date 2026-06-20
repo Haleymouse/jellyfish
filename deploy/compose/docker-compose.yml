@@ -104,6 +104,9 @@ services:
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
       # CORS
       CORS_ORIGINS: http://localhost:7788,http://127.0.0.1:7788
+      # 可选：访问鉴权与敏感字段加密（留空则不启用，保持向后兼容）
+      API_AUTH_TOKEN: ${API_AUTH_TOKEN:-}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:-}
       # 可选
       OPENAI_API_KEY: ${OPENAI_API_KEY-}
     ports:
@@ -137,6 +140,8 @@ services:
       S3_SECRET_ACCESS_KEY: ${RUSTFS_SECRET_KEY}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
       CORS_ORIGINS: http://localhost:7788,http://127.0.0.1:7788
+      # worker 需与 backend 使用相同密钥，才能解密供应商 api_key/api_secret
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY-}
     depends_on:
       mysql:
@@ -155,6 +160,8 @@ services:
       dockerfile: deploy/docker/front.Dockerfile
     environment:
       BACKEND_URL: ${BACKEND_URL}
+      # 与后端 API_AUTH_TOKEN 同值；后端未启用鉴权时留空即可。
+      API_TOKEN: ${API_AUTH_TOKEN:-}
     ports:
       - "7788:80"
     depends_on:

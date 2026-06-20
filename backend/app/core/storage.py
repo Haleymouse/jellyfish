@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, BinaryIO
 
 from anyio import to_thread
@@ -31,7 +32,13 @@ class StoredFileInfo:
     extra: dict[str, Any] | None = None
 
 
+@lru_cache(maxsize=1)
 def _build_s3_client():
+    """构建并缓存 S3 客户端。
+
+    boto3 client 线程安全且配置在进程生命周期内不变，
+    使用 lru_cache 避免每次读写都重建连接池（异常不会被缓存）。
+    """
     if not settings.s3_bucket_name:
         raise RuntimeError("S3 未配置：请在配置中设置 s3_bucket_name 等必要字段")
 

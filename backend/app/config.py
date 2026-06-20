@@ -25,6 +25,18 @@ class Settings(BaseSettings):
     # API
     api_v1_prefix: str = "/api/v1"
 
+    # 访问鉴权（可选）：
+    # - 为空时不启用鉴权，行为与历史一致（向后兼容）；
+    # - 配置后，所有 `/api/v1` 接口需携带匹配的令牌，
+    #   通过 `Authorization: Bearer <token>` 或 `X-API-Key: <token>` 传入。
+    api_auth_token: str | None = None
+
+    # 敏感字段静态加密密钥（可选）：
+    # - 为空时供应商 api_key / api_secret 仍按明文存储（向后兼容）；
+    # - 配置后，新写入的敏感字段将加密落库，旧明文在下次写入时自动转为密文；
+    # - 一旦用于生产数据请勿更换，否则历史密文无法解密。
+    field_encryption_key: str | None = None
+
     # Database
     database_url: str = "sqlite+aiosqlite:///./jellyfish.db"
 

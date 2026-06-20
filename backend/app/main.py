@@ -83,6 +83,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+def _extract_request_token(request: Request) -> str | None:
+    """从请求头解析访问令牌：优先 Authorization: Bearer，其次 X-API-Key。"""
+    authorization = request.headers.get("Authorization") or ""
+    if authorization.lower().startswith("bearer "):
+        return authorization[7:].strip()
+    api_key = request.headers.get("X-API-Key")
+    return api_key.strip() if api_key else None
+
+
+@app.middleware("http")
+async def auth_guard(request: Request, call_next):
+    """可选访问鉴权：仅在配置了 `api_auth_token` 时对 `/api/v1` 接口生效。
+
+    设计：
+    - 未配置令牌时直接放行，保持向后兼容；
+    - 健康检查与文档（/health、/docs、/openapi.json、/redoc）始终放行；
+    - 令牌不匹配时返回统一的 401 响应壳。
+    """
+    token = (settings.api_auth_token or "").strip()
+    path = request.url.path
+    needs_auth = bool(token) and path.startswith(settings.api_v1_prefix)
+    if needs_auth and request.method != "OPTIONS":
+        if _extract_request_token(request) != token:
+            body = ApiResponse[None](code=401, message="Unauthorized", data=None, meta=None).model_dump()
+            return JSONResponse(status_code=401, content=body)
+    return await call_next(request)
+
+
 app.include_router(api_v1_router, prefix=settings.api_v1_prefix)
 # 影视技能路由同时挂到主应用，保证 /api/v1/film 一定可访问
 
