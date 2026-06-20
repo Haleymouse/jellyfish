@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
+from app.core.db_pool import engine_pool_kwargs
 
 
 def _build_engine() -> AsyncEngine:
@@ -18,6 +19,7 @@ def _build_engine() -> AsyncEngine:
         settings.database_url,
         echo=settings.debug,
         future=True,
+        **engine_pool_kwargs(settings.database_url),
     )
 
 
