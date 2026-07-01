@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.db import Base
 from app.models.base import TimestampMixin
 from app.models.types import (
+    BgmSource,
     CameraAngle,
     CameraMovement,
     CameraShotType,
@@ -232,6 +233,12 @@ class ShotDetail(Base,TimestampMixin):
     )
 
     prompt_template: Mapped["PromptTemplate | None"] = relationship()
+    bgms: Mapped[list["ShotBgm"]] = relationship(
+        back_populates="shot_detail",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="ShotBgm.created_at",
+    )
 
     __table_args__ = (
         Index("ix_shot_details_camera_shot", "camera_shot"),
@@ -527,6 +534,71 @@ class ShotExtractedDialogueCandidate(Base, TimestampMixin):
     )
 
 
+class ShotBgm(Base, TimestampMixin):
+    """镜头 BGM（背景音乐）。
+
+    支持两种来源：
+    - upload：用户手动上传音频文件
+    - generated：通过 AI 根据 mood_tags + atmosphere 生成
+
+    每条镜头可有多条 BGM，但仅有一条处于 is_active=True 状态。
+    """
+
+    __tablename__ = "shot_bgms"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, comment="BGM ID (UUID)")
+    shot_detail_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("shot_details.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="所属镜头细节 ID",
+    )
+    source: Mapped[BgmSource] = mapped_column(
+        String(16),
+        nullable=False,
+        comment="来源类型：upload / generated",
+    )
+    file_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("files.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="关联的音频文件 ID（FileItem）",
+    )
+    prompt: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        default="",
+        comment="生成时使用的提示词（上传时为空）",
+    )
+    duration_ms: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        comment="音频时长（毫秒）",
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="是否为当前激活的 BGM",
+    )
+    provider_config: Mapped[dict | None] = mapped_column(
+        JSON,
+        nullable=True,
+        default=None,
+        comment="生成时使用的供应商/模型配置（JSON）",
+    )
+
+    shot_detail: Mapped["ShotDetail"] = relationship(back_populates="bgms")
+    file: Mapped["FileItem | None"] = relationship(foreign_keys=[file_id])
+
+    __table_args__ = (
+        Index("ix_shot_bgms_shot_detail_active", "shot_detail_id", "is_active"),
+    )
+
+
 __all__ = [
     "Shot",
     "ShotDetail",
@@ -535,4 +607,5 @@ __all__ = [
     "ShotCharacterLink",
     "ShotExtractedCandidate",
     "ShotExtractedDialogueCandidate",
+    "ShotBgm",
 ]

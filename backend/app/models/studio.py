@@ -27,6 +27,7 @@ from app.models.studio_projects import (
 )
 from app.models.studio_shots import (
     Shot,
+    ShotBgm,
     ShotExtractedCandidate,
     ShotExtractedDialogueCandidate,
     ShotCharacterLink,
@@ -37,6 +38,7 @@ from app.models.studio_shots import (
 from app.models.types import (
     AssetQualityLevel,
     AssetViewAngle,
+    BgmSource,
     CameraAngle,
     CameraMovement,
     CameraShotType,
@@ -70,6 +72,7 @@ __all__ = [
     "CameraMovement",
     "AssetQualityLevel",
     "AssetViewAngle",
+    "BgmSource",
     "ShotFrameType",
     "FileType",
     "FileUsageKind",
@@ -87,6 +90,7 @@ __all__ = [
     "ShotDetail",
     "ShotFrameImage",
     "ShotDialogLine",
+    "ShotBgm",
     "ShotExtractedCandidate",
     "ShotExtractedDialogueCandidate",
     "Actor",

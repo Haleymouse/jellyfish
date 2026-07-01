@@ -185,6 +185,13 @@ class VFXType(str, Enum):
     other = "OTHER"  # 其他
 
 
+class BgmSource(str, Enum):
+    """BGM 来源类型。"""
+
+    upload = "upload"
+    generated = "generated"
+
+
 class PromptCategory(str, Enum):
     """提示词模板类别。"""
 

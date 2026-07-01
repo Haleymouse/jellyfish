@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from app.services.film.bgm_generation import run_bgm_generation_task
 from app.services.film.generated_video import run_video_generation_task
 from app.services.film.shot_frame_prompt_tasks import run_shot_frame_prompt_task
 from app.services.script_processing_worker import (
@@ -71,6 +72,14 @@ task_executor_registry.register(
     AbstractAsyncDelegatingExecutor(
         task_kind="shot_frame_prompt",
         runner=run_shot_frame_prompt_task,
+        timeout_seconds=600.0,
+    ),
+)
+task_executor_registry.register(
+    "bgm_generation",
+    AbstractAsyncDelegatingExecutor(
+        task_kind="bgm_generation",
+        runner=run_bgm_generation_task,
         timeout_seconds=600.0,
     ),
 )
