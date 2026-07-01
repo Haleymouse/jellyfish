@@ -172,6 +172,7 @@ def _build_chat_openai_model(
     kwargs["model"] = model.name
     kwargs["api_key"] = api_key
     kwargs.setdefault("temperature", 0)
+    kwargs.setdefault("streaming", True)
 
     base_url = resolve_effective_base_url(provider=provider, category=ModelCategoryKey.text)
     if base_url:

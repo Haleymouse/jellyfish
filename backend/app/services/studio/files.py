@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -186,13 +186,32 @@ async def build_download_response(
     db: AsyncSession,
     *,
     file_id: str,
-) -> StreamingResponse:
-    """根据 file_id 构建下载响应。"""
+) -> Response:
+    """根据 file_id 构建下载响应（媒体文件支持 Range 请求以实现浏览器内播放）。"""
+    from fastapi.responses import FileResponse as _FileResponse
+    import tempfile, os
+
     file_item = await get_or_404(db, FileItem, file_id, detail=entity_not_found("File"))
     content = await storage.download_file(key=file_item.storage_key)
 
     filename = Path(file_item.storage_key).name or "download"
     media_type = _resolve_download_media_type(filename)
+    is_media = media_type and (
+        media_type.startswith("video/") or media_type.startswith("audio/") or media_type.startswith("image/")
+    )
+
+    if is_media:
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix)
+        tmp.write(content)
+        tmp.flush()
+        tmp.close()
+        return _FileResponse(
+            tmp.name,
+            media_type=media_type,
+            filename=filename,
+            headers={"Content-Disposition": f"inline; filename*=UTF-8''{quote(filename)}"},
+        )
+
     content_disposition = f"attachment; filename*=UTF-8''{quote(filename)}"
     return StreamingResponse(
         iter([content]),
